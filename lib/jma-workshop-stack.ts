@@ -99,15 +99,21 @@ export class JMAWorkshopStack extends cdk.Stack {
         readOnly: false,
     };
     
-    const taskDefinition = new aws_ecs.FargateTaskDefinition(this, "Apache", {
+    const taskDefinition = new aws_ecs.FargateTaskDefinition(this, "WordPress", {
       memoryLimitMiB: 512,
       taskRole,
       volumes: [volumeConfig],
     });
 
-    const container = taskDefinition.addContainer("Apache", {
-      image: aws_ecs.ContainerImage.fromRegistry("httpd:latest"),
+    const container = taskDefinition.addContainer("WordPress", {
+      image: aws_ecs.ContainerImage.fromRegistry("wordpress:latest"),
       portMappings: [{ containerPort: 80 }],
+      secrets: {
+        WORDPRESS_DB_HOST: aws_ecs.Secret.fromSecretsManager(dbCluster.secret!, "host"),
+        WORDPRESS_DB_NAME: aws_ecs.Secret.fromSecretsManager(dbCluster.secret!, "dbname"),
+        WORDPRESS_DB_USER: aws_ecs.Secret.fromSecretsManager(dbCluster.secret!, "username"),
+        WORDPRESS_DB_PASSWORD: aws_ecs.Secret.fromSecretsManager(dbCluster.secret!, "password"),
+      },
     });
     
     container.addMountPoints(mountPoints)
@@ -153,7 +159,7 @@ export class JMAWorkshopStack extends cdk.Stack {
       protocol: elbv2.ApplicationProtocol.HTTP,
       targetType: elbv2.TargetType.IP,
       healthCheck: {
-        path: "/",
+        path: "/wp-includes/images/blank.gif",
         interval: Duration.seconds(60),
         healthyHttpCodes: "200",
       },
